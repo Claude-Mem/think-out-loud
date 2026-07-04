@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/thedotmack-sequential-thinking-skill-badge.png)](https://mseep.ai/app/thedotmack-sequential-thinking-skill)
+
 <p align="center">
   <h1 align="center">sequential-thinking-skill</h1>
   <p align="center">
