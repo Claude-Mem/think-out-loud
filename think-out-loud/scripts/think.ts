@@ -22,9 +22,16 @@
  *
  *   # Reset the selected task log
  *   bun think.ts --state /path/to/task/notes.json --reset
+ *
+ *   # Publish a note to the local live UI; consume user replies before publishing
+ *   bun think.ts --state /path/to/task/notes.json --live http://127.0.0.1:4317 --session task-name --thought "working note here" --thoughtNumber 1 --totalThoughts 5 --nextThoughtNeeded true
+ *
+ *   # Read replies independently without changing the notebook
+ *   bun think.ts --live http://127.0.0.1:4317 --session task-name --feedback
  */
 
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
+import { randomUUID } from "crypto";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { parseArgs } from "util";
@@ -102,11 +109,58 @@ function fail(message: string): never {
   process.exit(1);
 }
 
+function liveURL(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return fail("--live must be an HTTP(S) URL on localhost or 127.0.0.1");
+  }
+  if (!['http:', 'https:'].includes(url.protocol) ||
+      !['localhost', '127.0.0.1'].includes(url.hostname) ||
+      url.username || url.password) {
+    fail("--live must be an HTTP(S) URL on localhost or 127.0.0.1 without credentials");
+  }
+  return url;
+}
+
+async function liveRequest(url: URL, path: string, body: unknown): Promise<any> {
+  const response = await fetch(new URL(path, url), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    redirect: "error",
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) throw new Error(`server returned HTTP ${response.status}`);
+  return response.json();
+}
+
+async function consumeFeedback(url: URL, sessionId: string, showEmpty = false): Promise<void> {
+  const result = await liveRequest(url, "/api/feedback/consume", { sessionId });
+  if (!result || !Array.isArray(result.feedback) || result.feedback.some((reply: any) =>
+    !reply || typeof reply.id !== "string" || typeof reply.noteId !== "string" ||
+    typeof reply.text !== "string" || reply.sessionId !== sessionId)) {
+    throw new Error("server returned an invalid feedback response");
+  }
+  if (showEmpty || result.feedback.length > 0) {
+    console.log("User feedback for this task");
+    console.log(JSON.stringify(result, null, 2));
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 // --- Parse CLI args ---
 
 const { values } = parseArgs({
   options: {
     state: { type: "string" },
+    live: { type: "string" },
+    session: { type: "string", default: "main" },
+    feedback: { type: "boolean", default: false },
     thought: { type: "string" },
     thoughtNumber: { type: "string" },
     totalThoughts: { type: "string" },
@@ -132,6 +186,18 @@ if (values.reset) {
   process.exit(0);
 }
 
+if (values.feedback && !values.status) {
+  if (!values.live) fail("--feedback requires --live");
+  const url = liveURL(values.live);
+  if (!values.session.trim()) fail("--session must not be empty");
+  try {
+    await consumeFeedback(url, values.session, true);
+  } catch (error) {
+    fail(`Live feedback could not be checked: ${errorMessage(error)}`);
+  }
+  process.exit(0);
+}
+
 const state = loadState();
 
 if (values.status) {
@@ -143,6 +209,9 @@ if (values.status) {
   console.log(JSON.stringify(response, null, 2));
   process.exit(0);
 }
+
+const live = values.live ? liveURL(values.live) : undefined;
+if (live && !values.session.trim()) fail("--session must not be empty");
 
 // --- Validate required fields ---
 
@@ -212,3 +281,29 @@ console.error(formatThought(thoughtData));
 const status = makeStatusResponse(state);
 const branchList = status.branches.length > 0 ? ` branches=${status.branches.join(",")}` : "";
 console.log(`[${status.thoughtNumber}/${status.totalThoughts}] history=${status.thoughtHistoryLength}${branchList} next=${status.nextThoughtNeeded}`);
+
+if (live) {
+  try {
+    await consumeFeedback(live, values.session);
+  } catch (error) {
+    console.error(`Warning: Live feedback could not be checked: ${errorMessage(error)}. The note is saved locally.`);
+  }
+  try {
+    const { thought, ...metadata } = thoughtData;
+    const id = randomUUID();
+    const result = await liveRequest(live, "/api/notes", {
+      id,
+      sessionId: values.session,
+      original: thought,
+      ...metadata,
+    });
+    if (!result?.note || result.note.id !== id) {
+      throw new Error("server returned an invalid note response");
+    }
+    const link = new URL("/", live);
+    link.searchParams.set("session", values.session);
+    console.error(`Live note: ${link.href}`);
+  } catch (error) {
+    console.error(`Warning: Public feed unreachable: ${errorMessage(error)}. The note is saved locally.`);
+  }
+}

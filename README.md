@@ -59,6 +59,35 @@ The history supports a more precise story than “Sequential Thinking was forgot
 
 Read [HISTORY.md](HISTORY.md) for the sourced timeline, changes to thinking displays, and the limits of the “forgotten” explanation.
 
+## Live view and replies
+
+Run the live view from this repository with [Bun](https://bun.sh/) and a signed-in Claude Code CLI:
+
+```bash
+bun live/server.ts
+```
+
+Open **http://127.0.0.1:4317**. Each public working note arrives live and is rewritten using the pinned [I Have ADHD](https://github.com/ayghri/i-have-adhd) prompt: the key action or finding first, small numbered steps, visible progress, and meaningful uncertainty. The original note remains available. Rewriting uses your existing Claude Code login; it makes model calls.
+
+Send working notes from the skill:
+
+```bash
+mkdir -p work
+bun think-out-loud/scripts/think.ts --state work/task.json --live http://127.0.0.1:4317 --session main --thought "The failing requests follow token refresh. I still need to compare successful requests before treating refresh as the cause." --thoughtNumber 1 --totalThoughts 3 --nextThoughtNeeded true
+```
+
+Click **Add your thought** on a note to reply to that specific note. The reply enters the producing agent's inbox unchanged. The agent reads pending replies before publishing its next note, or explicitly checks between actions:
+
+```bash
+bun think-out-loud/scripts/think.ts --live http://127.0.0.1:4317 --session main --feedback
+```
+
+A reply is shown as queued until the agent reads it. Reading means delivered, not that the agent has completed the requested change. Delivery happens at checkpoints; this app does not inject messages into an arbitrary running chat. The skill tells the agent to check and incorporate feedback during the task.
+
+Use a different `--session` for each investigation, and open `http://127.0.0.1:4317/?session=your-session`. You can pause the feed while reading or writing; incoming notes continue to collect. Notes and replies persist locally in `.local/live-state.json`, which is ignored by Git. The server listens on this computer only.
+
+The formatter preserves source facts and uncertainty; it does not create private reasoning traces. If rewriting fails, the original stays available and the view reports the failure. The full upstream MIT notice and source revision are retained in [live/vendor/i-have-adhd](live/vendor/i-have-adhd/SOURCE.md).
+
 ## Optional notebook
 
 The inherited `think.ts` script keeps a JSON history of public working notes. Use a different state file for each task, with an existing parent directory:

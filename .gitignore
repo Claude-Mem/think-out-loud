@@ -2,3 +2,4 @@
 *.skill
 node_modules/
 .claude/
+.local/

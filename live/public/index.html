@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f6f8">
+    <title>Think out loud</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#thought-stream">Skip to thoughts</a>
+    <header class="site-header">
+      <a class="wordmark" href="/" aria-label="Think out loud home">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        think out loud<span class="wordmark-dot" aria-hidden="true">.</span>
+      </a>
+      <details class="session-picker" id="session-picker">
+        <summary><span class="session-label">Session</span> <span id="session-name">main</span><span class="chevron" aria-hidden="true"></span></summary>
+        <form id="session-form">
+          <label for="session-input">Open a session</label>
+          <div class="session-input-row"><input id="session-input" name="session" autocomplete="off" required maxlength="80" spellcheck="false"><button type="submit">Open</button></div>
+          <p id="session-error" class="field-error" role="alert" hidden></p>
+        </form>
+      </details>
+    </header>
+
+    <main class="workspace">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">A little room to think</p>
+        <h1 id="page-title">One thought<br>at a time.</h1>
+        <p class="intro-description">Follow the work as it happens.<br>Add a thought. Help shape what’s next.</p>
+        <div class="explanation">
+          <div class="explanation-mark" aria-hidden="true">↳</div>
+          <p>Public working notes,<br>shaped for clarity.</p>
+        </div>
+        <div class="adapter-note" id="adapter-note" hidden></div>
+      </section>
+
+      <section class="stream-section" aria-label="Live working notes">
+        <div class="stream-toolbar">
+          <div class="connection" id="connection" data-state="connecting" role="status" aria-live="polite"><span class="connection-dot" aria-hidden="true"></span><span id="connection-text">Connecting</span></div>
+          <button class="pause-button" id="pause-button" type="button" aria-pressed="false"><span class="pause-icon" aria-hidden="true"></span><span id="pause-label">Pause reading</span></button>
+        </div>
+        <div id="stream-message" class="stream-message" role="status" aria-live="polite" hidden></div>
+        <div id="connection-error" class="connection-error" role="alert" hidden></div>
+        <div id="thought-stream" tabindex="-1">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-illustration" aria-hidden="true"><div class="thought-outline"><span></span><span></span><span></span></div><div class="small-thought"></div></div>
+            <p class="thought-eyebrow">Your live workspace</p>
+            <h2>Waiting for the next thought</h2>
+            <p>New working notes will appear here.<br>Leave a thought to help steer the next step.</p>
+            <details class="setup-details"><summary>How do notes arrive?</summary><p>Start a working session with the Think out loud live command. Notes appear here automatically, and your replies wait in the agent’s inbox.</p><a href="https://github.com/claude-mem/think-out-loud#live-view-and-replies" target="_blank" rel="noopener noreferrer">Read the setup guide <span aria-hidden="true">↗</span></a></details>
+          </div>
+          <div id="current-thought"></div>
+          <div class="previous-section" id="previous-section" hidden><div class="previous-heading"><h2>Earlier thoughts</h2><span id="previous-count"></span></div><div id="previous-thoughts"></div></div>
+          <button class="history-button" id="history-button" type="button" hidden></button>
+        </div>
+        <div class="quiet-footer"><span>Replies reach the agent at its next checkpoint.</span><span>Presentation: <a href="https://github.com/ayghri/i-have-adhd" target="_blank" rel="noopener noreferrer">I Have ADHD <span aria-hidden="true">↗</span></a></span></div>
+      </section>
+    </main>
+    <div id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>

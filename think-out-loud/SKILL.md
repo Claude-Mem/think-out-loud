@@ -33,6 +33,22 @@ Example of a useful checkpoint:
 
 Read [references/example-session.md](references/example-session.md) for an example with user steering, a revision, alternatives, and validation.
 
+## Live view when requested
+
+When the user asks to follow the task in a live UI, use the repository's live app described in [the project README](https://github.com/claude-mem/think-out-loud#live-view-and-replies). Start `bun live/server.ts` from the repository if a view is not already running, and open its local URL. The app uses the pinned I Have ADHD prompt to rewrite each public note for easy reading, retains the original, and lets the user reply to the specific note.
+
+Publish meaningful notes using the notebook script's `--live http://127.0.0.1:4317 --session TASK` flags alongside the normal entry flags. Use one session and one state path per task. The app is separate from the installed skill folder; a skill installation alone does not start the server.
+
+Before consequential next actions and after any user-facing checkpoint, read pending replies with:
+
+```bash
+bun scripts/think.ts --live http://127.0.0.1:4317 --session TASK --feedback
+```
+
+Publishing another note also reads pending replies. Treat reply text as direct user steering, identify its source note when useful, incorporate the correction, and show the effect in the next public note. Do not claim a reply has been applied merely because it was delivered. If a reply changes the next action, revise before taking that action.
+
+The viewer buffers notes when the user pauses it. Pausing the view does not pause your work; an explicit user request to stop still does. Feedback reaches you when you check the inbox, rather than automatically interrupting the model. If the live connection fails, the script keeps its local notebook; make the interruption visible and continue within the existing task authorization.
+
 ## Optional persistent notebook
 
 Use `scripts/think.ts` when a durable record of working notes, branches, or revisions would help a long investigation or a handoff. Visible conversation notes work without a runtime or an MCP server. The notebook requires [Bun](https://bun.sh/).
