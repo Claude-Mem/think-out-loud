@@ -1,149 +1,89 @@
-<p align="center">
-  <h1 align="center">sequential-thinking-skill</h1>
-  <p align="center">
-    Sequential thinking for Claude Code — no MCP server required.
-    <br />
-    <strong>Branch. Revise. Adapt. Think deeper.</strong>
-  </p>
-  <p align="center">
-    <a href="#quick-start">Quick Start</a> &middot;
-    <a href="#features">Features</a> &middot;
-    <a href="#how-it-works">How It Works</a> &middot;
-    <a href="#comparison">MCP vs sequential-thinking-skill</a>
-  </p>
-  <p align="center">
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
-    <img src="https://img.shields.io/badge/TypeScript-strict-3178C6.svg?logo=typescript&logoColor=white" alt="TypeScript" />
-    <img src="https://img.shields.io/badge/Claude_Code-skill-7C3AED.svg" alt="Claude Code Skill" />
-  </p>
-</p>
+# think-out-loud
 
----
+**Thinking should be a conversation you can join.**
 
-A **Claude Code skill** that replicates the [Sequential Thinking MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking) with full feature parity. No MCP infrastructure needed — just copy a folder and go.
+A skill for active thinking out loud: visible assumptions, evidence, uncertainty, alternatives, decisions, and revisions while the work happens. Read it, question it, interrupt it, and steer it.
 
-Claude gains structured, multi-step reasoning with **branching**, **revision**, and **dynamic depth adjustment**, all tracked by a lightweight TypeScript state machine that persists to disk.
+Inspired by the [Sequential Thinking MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking), and by the frustration of losing useful visibility when a coding assistant hides its thinking display.
 
-## Demo
+## What it feels like
 
-Here's what structured thinking looks like in action:
+**Assistant:** The failures so far happen after token refresh. An expired token is a plausible cause; I still need to compare successful requests.
 
-```
-💭 Thought 1/5
-First, I need to clarify what type of auction we're dealing with.
-I'll assume sealed-bid first-price unless told otherwise.
-[1/5] history=1 next=true
+**You:** It also happens immediately after a fresh login.
 
-🔄 Revision 3/5 (revising thought 1)
-Wait — I assumed one format, but the question is generic.
-I should cover multiple auction types. Changing approach.
-[3/5] history=3 next=true
+**Assistant:** That changes the hypothesis. Token refresh alone cannot explain it. I’ll compare fresh sessions too and check whether the requests reach the server.
 
-🌿 Branch 4/7 (from thought 2, ID: vickrey)
-In a Vickrey auction, the dominant strategy is to bid your true
-valuation regardless of the number of players. Exploring this path.
-[4/7] history=4 branches=vickrey next=true
-```
+**Assistant:** Fresh-session failures stop before the network request; the captured trace points to client validation. I’ll check that validation path and test the reported inputs.
 
-Each thought is a deliberate step — Claude can **revise** when assumptions are wrong, **branch** to explore alternatives, and **extend** when problems are deeper than expected.
+The useful part is the opportunity to change the investigation before the answer is finished. See the [worked example](think-out-loud/references/example-session.md).
 
-## Features
-
-- **Sequential numbered thoughts** — structured chain-of-thought with formatted output
-- **Revisions** — reconsider and correct previous thoughts without losing the original
-- **Branching** — explore alternative paths from any thought, tracked by branch ID
-- **Dynamic depth** — adjust `totalThoughts` up or down as the problem unfolds
-- **Hypothesis/verification loops** — generate and verify solutions iteratively
-- **Persistent state** — history survives across invocations via JSON on disk
-- **Full state inspection** — dump complete thought history and branch details at any point
-
-## Quick Start
-
-### Prerequisites
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
-- [`tsx`](https://github.com/privatenumber/tsx) — available via `npx tsx` (no global install needed)
-
-### Install
+## Install
 
 ```bash
-npx skills add https://github.com/thedotmack/sequential-thinking-skill --skill sequential-thinking
+npx skills add https://github.com/claude-mem/think-out-loud --skill think-out-loud
 ```
 
-Or manually:
+Or install manually for Claude Code:
 
 ```bash
-git clone https://github.com/thedotmack/sequential-thinking-skill.git
-cp -r sequential-thinking-skill/sequential-thinking ~/.claude/skills/
+git clone https://github.com/claude-mem/think-out-loud.git
+mkdir -p ~/.claude/skills
+cp -R think-out-loud/think-out-loud ~/.claude/skills/
 ```
 
-That's it. The skill auto-activates when Claude detects problems that benefit from structured reasoning.
+For Codex, copy the same skill folder into `~/.codex/skills/`.
 
-You can also trigger it explicitly with phrases like: *"think through this step by step"*, *"break this down"*, *"use sequential thinking"*.
+Ask: **“Use think-out-loud while investigating this. Show me the assumptions and decision points so I can steer.”** In Claude Code you can invoke `/think-out-loud`; in Codex, use `$think-out-loud`.
 
-## How It Works
+The skill instructions work without an MCP server or a runtime. The optional notebook script requires [Bun](https://bun.sh/).
 
-The skill is powered by `think.ts`, a TypeScript state machine that:
+## What the skill does
 
-1. Maintains an **append-only thought history** on disk (`.think_state.json`)
-2. Tracks **branches** as named collections of thoughts forking from any point
-3. Returns a **compact status line** to stdout after each thought (`[3/7] history=3 next=true`)
-4. Renders **formatted thought headers** to stderr for visual feedback
+- Publishes short working notes directly in the conversation.
+- Connects observations to the decisions they affect.
+- Makes uncertain assumptions and useful alternatives reviewable.
+- Incorporates user corrections while the task is in progress.
+- Records revisions and branches when a persistent notebook is useful.
+- Finishes with the result, validation, and material open questions.
 
-Claude invokes it via `tsx scripts/think.ts` with CLI flags for each thought. The SKILL.md file instructs Claude on the protocol — when to branch, revise, extend, and terminate.
+These notes are written for collaboration. They do not expose private internal reasoning or guarantee that a transcript faithfully represents the model's internal process. Showing a note does not establish its truth; the work still needs sources, observations, or tests.
 
-### Commands
+## Why this name, now?
 
-| Command | Description |
-|---------|-------------|
-| `--reset` | Clear state for a new thinking session |
-| `--thought "..." --thoughtNumber N --totalThoughts M --nextThoughtNeeded true/false` | Submit a thought |
-| `--isRevision --revisesThought N` | Mark as revision of thought N |
-| `--branchFromThought N --branchId "label"` | Branch from thought N |
-| `--needsMoreThoughts` | Signal that more thoughts are needed |
-| `--status` | Dump full state (history + branches) |
+This project began as `sequential-thinking-skill`. Its first focus was reproducing the MCP's numbered entries, revisions, branches, and adjustable estimates with a local script.
 
-### Output
+The rebrand puts the human interaction first. Native reasoning can do more inside the model, while product interfaces can show less of the process. A useful collaboration skill makes consequential choices visible in the conversation, where a person can respond.
 
-Every thought prints a header and content to stderr, plus a compact status line to stdout:
+The history supports a more precise story than “Sequential Thinking was forgotten.” The official MCP remains maintained. In December 2025, Anthropic updated its separate think-tool article to recommend native extended thinking for most cases. That helps explain why a separate scratchpad may feel less necessary; it does not establish that this particular MCP was built into models or that its adoption declined. [Anthropic's update](https://www.anthropic.com/engineering/claude-think-tool), [official MCP repository](https://github.com/modelcontextprotocol/servers).
 
+Read [HISTORY.md](HISTORY.md) for the sourced timeline, changes to thinking displays, and the limits of the “forgotten” explanation.
+
+## Optional notebook
+
+The inherited `think.ts` script keeps a JSON history of public working notes. Use a different state file for each task, with an existing parent directory:
+
+```bash
+mkdir -p work
+bun think-out-loud/scripts/think.ts --state work/investigation.json --reset
+bun think-out-loud/scripts/think.ts --state work/investigation.json --thought "Fresh sessions fail before the request reaches the server; checking client validation next." --thoughtNumber 1 --totalThoughts 3 --nextThoughtNeeded true
+bun think-out-loud/scripts/think.ts --state work/investigation.json --status
 ```
-💭 Thought 4/7
-In a Vickrey auction, the dominant strategy is...
-[4/7] history=4 branches=vickrey,english next=true
-```
 
-The `--status` command returns full JSON with `fullHistory` and `branchDetails`.
+The notebook retains the original flags for revisions, branches, and extending the estimate. See [SKILL.md](think-out-loud/SKILL.md) for the commands. Tool output can be collapsed by the host, so the skill also puts useful notes directly in the chat.
 
-## Comparison
-
-How does sequential-thinking-skill compare to the official MCP server?
-
-| | Sequential Thinking MCP | sequential-thinking-skill |
+| Capability | Sequential Thinking MCP | think-out-loud |
 |---|---|---|
-| **Setup** | Configure MCP server in `claude_desktop_config.json` | Copy a folder to `~/.claude/skills/` |
-| **Runtime** | Requires running MCP server process | Standalone TypeScript script |
-| **Dependencies** | `@modelcontextprotocol/sdk`, `zod` | `tsx` only |
-| **State persistence** | In-memory (lost on restart) | JSON on disk (survives restarts) |
-| **Features** | Thoughts, branches, revisions | Identical feature set |
-| **State inspection** | Via MCP tool call | `--status` flag |
-| **Integration** | MCP protocol | Claude Code skill protocol |
+| Interaction | Model submits structured tool entries | Assistant publishes working notes for user review and steering |
+| Revisions and branches | Tool fields record them | Conversation can show them; optional script records them |
+| Storage | Reference server keeps in-memory state | Optional JSON notebook persists between invocations |
+| Setup | MCP client and server | Skill folder; Bun only for the optional notebook |
+| Visibility | Depends on how the host displays tool arguments and logs | Skill asks for notes in the user-visible conversation |
 
-## Project Structure
+## Existing users
 
-```
-sequential-thinking-skill/
-├── sequential-thinking/
-│   ├── SKILL.md                       # Skill definition and protocol
-│   ├── scripts/
-│   │   └── think.ts                   # TypeScript state machine
-│   └── references/
-│       └── example-session.md         # Worked example with all features
-├── README.md
-├── LICENSE
-└── .gitignore
-```
+Install `think-out-loud` using the new URL. If you manually installed the old `sequential-thinking` folder, remove that copy once you have moved any notebook you want to keep; leaving both installed can create duplicate guidance. Existing script flags and the default `.think_state.json` behavior remain supported.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The original Git history and license are retained.

@@ -1,25 +1,27 @@
 #!/usr/bin/env bun
 /**
- * Sequential thinking state machine.
+ * think-out-loud visible working notes.
  *
- * Maintains thoughtHistory and branches as persistent state across invocations.
- * Returns structured status after each thought, exactly mirroring the MCP server.
+ * Keeps working notes, revisions, and branches as persistent state across invocations.
+ * Returns progress after each entry so the work can be reviewed as it happens.
+ * Use --state PATH for a per-task JSON log; create its parent directory first.
+ * Without --state, the legacy script-relative .think_state.json is used.
  *
  * Usage:
- *   # Submit a thought
- *   tsx think.ts --thought "analysis here" --thoughtNumber 1 --totalThoughts 5 --nextThoughtNeeded true
+ *   # Submit a visible working note
+ *   bun think.ts --state /path/to/task/notes.json --thought "working note here" --thoughtNumber 1 --totalThoughts 5 --nextThoughtNeeded true
  *
  *   # Submit a revision
- *   tsx think.ts --thought "revised" --thoughtNumber 3 --totalThoughts 5 --nextThoughtNeeded true --isRevision --revisesThought 1
+ *   bun think.ts --state /path/to/task/notes.json --thought "revised" --thoughtNumber 3 --totalThoughts 5 --nextThoughtNeeded true --isRevision --revisesThought 1
  *
  *   # Submit a branch
- *   tsx think.ts --thought "alt path" --thoughtNumber 4 --totalThoughts 7 --nextThoughtNeeded true --branchFromThought 2 --branchId alt-approach
+ *   bun think.ts --state /path/to/task/notes.json --thought "alt path" --thoughtNumber 4 --totalThoughts 7 --nextThoughtNeeded true --branchFromThought 2 --branchId alt-approach
  *
  *   # View current state
- *   tsx think.ts --status
+ *   bun think.ts --state /path/to/task/notes.json --status
  *
- *   # Reset state for a new session
- *   tsx think.ts --reset
+ *   # Reset the selected task log
+ *   bun think.ts --state /path/to/task/notes.json --reset
  */
 
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
@@ -28,7 +30,6 @@ import { fileURLToPath } from "url";
 import { parseArgs } from "util";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const STATE_FILE = join(__dirname, ".think_state.json");
 
 interface ThoughtData {
   thought: string;
@@ -105,6 +106,7 @@ function fail(message: string): never {
 
 const { values } = parseArgs({
   options: {
+    state: { type: "string" },
     thought: { type: "string" },
     thoughtNumber: { type: "string" },
     totalThoughts: { type: "string" },
@@ -119,6 +121,8 @@ const { values } = parseArgs({
   },
   strict: true,
 });
+
+const STATE_FILE = values.state ?? join(__dirname, ".think_state.json");
 
 // --- Commands ---
 
@@ -201,10 +205,10 @@ if (thoughtData.branchFromThought != null && thoughtData.branchId != null) {
 
 saveState(state);
 
-// Formatted thought → stderr (visual)
+// Visible working note → stderr
 console.error(formatThought(thoughtData));
 
-// Structured JSON → stdout (machine-readable)
+// Compact progress → stdout
 const status = makeStatusResponse(state);
 const branchList = status.branches.length > 0 ? ` branches=${status.branches.join(",")}` : "";
 console.log(`[${status.thoughtNumber}/${status.totalThoughts}] history=${status.thoughtHistoryLength}${branchList} next=${status.nextThoughtNeeded}`);
